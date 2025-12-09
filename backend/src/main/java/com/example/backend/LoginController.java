@@ -19,7 +19,7 @@ public class LoginController {
         Map<String, Object> response = new HashMap<>();
 
         // 假设账号是 admin，密码是 123456
-        if ("admin".equals(username) && "123456".equals(password)) {
+        if ("admin".equals(username) && "123".equals(password)) {
             response.put("success", true);
             response.put("message", "登录成功");
             response.put("token", "fake-jwt-token-123"); // 模拟Token

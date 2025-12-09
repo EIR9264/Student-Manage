@@ -18,10 +18,8 @@ const handleLogin = async () => {
   try {
     const res = await axios.post('http://localhost:8080/api/login', form.value)
     if (res.data.success) {
-      ElMessage.success('欢迎回来！')
-      router.push('/todo') // 跳转到 Todo 页
-    } else {
-      ElMessage.error(res.data.message)
+      router.push('/student')
+      ElMessage.success(res.data.message)
     }
   } catch (e) {
     console.error(e)
@@ -42,14 +40,14 @@ const handleLogin = async () => {
       </template>
       <el-form :model="form" label-position="top">
         <el-form-item label="用户名">
-          <el-input v-model="form.username" placeholder="admin" prefix-icon="User" />
+          <el-input v-model="form.username" prefix-icon="User" />
         </el-form-item>
         <el-form-item label="密码">
-          <el-input v-model="form.password" type="password" placeholder="123456" prefix-icon="Lock" @keyup.enter="handleLogin"/>
+          <el-input v-model="form.password" type="password" prefix-icon="Lock" @keyup.enter="handleLogin"/>
         </el-form-item>
         <el-button type="primary" class="w-100" :loading="loading" @click="handleLogin">登录</el-button>
       </el-form>
-      <div class="tips">测试账号: admin / 123456</div>
+      <div class="tips">测试账密: admin / 123</div>
     </el-card>
   </div>
 </template>
