@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue' // 引入 watch
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -11,6 +11,7 @@ const students = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const searchKeyword = ref('')
 
 // 表单数据
 const form = reactive({
@@ -23,15 +24,18 @@ const form = reactive({
 
 // 登出
 const logout = () => {
+  localStorage.removeItem('token')
   router.push('/login')
   ElMessage.info('已退出登录')
 }
 
-// 获取列表
+// 获取列表核心逻辑
 const fetchStudents = async () => {
   loading.value = true
   try {
-    const res = await axios.get(API_URL)
+    const res = await axios.get(API_URL, {
+      params: { keyword: searchKeyword.value }
+    })
     students.value = res.data
   } catch (e) {
     console.error(e)
@@ -40,6 +44,19 @@ const fetchStudents = async () => {
     loading.value = false
   }
 }
+
+// --- 热加载搜索 (防抖实现) ---
+let timer = null
+// 监听搜索框的变化
+watch(searchKeyword, () => {
+  // 如果之前有定时器，先清除（说明用户还在打字）
+  if (timer) clearTimeout(timer)
+
+  // 重新设置定时器，300ms 后执行搜索
+  timer = setTimeout(() => {
+    fetchStudents()
+  }, 300)
+})
 
 // 打开新增窗口
 const openAddDialog = () => {
@@ -55,26 +72,23 @@ const openAddDialog = () => {
 // 打开编辑窗口
 const openEditDialog = (row) => {
   isEdit.value = true
-  Object.assign(form, row) // 回填数据
+  Object.assign(form, row)
   dialogVisible.value = true
 }
 
-// 保存数据（新增或修改）
+// 保存数据
 const handleSave = async () => {
   if (!form.name || !form.studentNumber) return ElMessage.warning('姓名和学号不能为空')
 
   try {
     if (isEdit.value) {
-      // 修改
-      const res = await axios.put(`${API_URL}/${form.id}`, form)
-      // 更新本地列表中的数据
-      const index = students.value.findIndex(s => s.id === form.id)
-      students.value[index] = res.data
+      // 修复：直接 await，不再定义未使用的 res 变量
+      await axios.put(`${API_URL}/${form.id}`, form)
+      fetchStudents()
       ElMessage.success('修改成功')
     } else {
-      // 新增
-      const res = await axios.post(API_URL, form)
-      students.value.push(res.data)
+      await axios.post(API_URL, form)
+      fetchStudents()
       ElMessage.success('添加成功')
     }
     dialogVisible.value = false
@@ -93,10 +107,10 @@ const handleDelete = (id) => {
   }).then(async () => {
     try {
       await axios.delete(`${API_URL}/${id}`)
-      students.value = students.value.filter(s => s.id !== id)
+      fetchStudents()
       ElMessage.success('删除成功')
     } catch (e) {
-      ElMessage.error('删除失败'+e)
+      ElMessage.error('删除失败：'+e)
     }
   })
 }
@@ -107,40 +121,58 @@ onMounted(() => fetchStudents())
 <template>
   <el-container class="layout">
     <el-header class="header">
-      <div class="logo">学生管理系统</div>
+      <div class="logo">
+        <el-icon style="margin-right: 8px; vertical-align: middle;"><Management /></el-icon>
+        <span>学生管理系统</span>
+      </div>
       <el-button type="danger" plain size="small" @click="logout">退出登录</el-button>
     </el-header>
 
-    <el-main>
-      <el-card class="box-card">
+    <el-main class="main-content">
+      <el-card class="box-card" shadow="hover">
         <div class="operation-area">
-          <el-button type="primary" icon="Plus" @click="openAddDialog">添加学生</el-button>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <!-- 搜索框：去掉了按钮触发，改为自动监听 -->
+              <el-input
+                v-model="searchKeyword"
+                placeholder="输入姓名或学号，自动搜索..."
+                clearable
+                prefix-icon="Search"
+              />
+            </el-col>
+            <el-col :span="16" style="text-align: right;">
+              <el-button type="primary" icon="Plus" @click="openAddDialog">添加学生</el-button>
+            </el-col>
+          </el-row>
         </div>
 
         <el-table :data="students" v-loading="loading" style="width: 100%" border stripe>
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="studentNumber" label="学号" width="150" />
+          <el-table-column prop="id" label="ID" width="80" sortable />
+          <el-table-column prop="studentNumber" label="学号" width="150" sortable />
           <el-table-column prop="name" label="姓名" width="120" />
           <el-table-column prop="gender" label="性别" width="100">
             <template #default="scope">
-              <el-tag :type="scope.row.gender === '男' ? '' : 'danger'">{{ scope.row.gender }}</el-tag>
+              <el-tag :type="scope.row.gender === '男' ? '' : 'danger'" effect="plain">{{ scope.row.gender }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="age" label="年龄" width="100" />
+          <el-table-column prop="age" label="年龄" width="100" sortable />
 
           <el-table-column label="操作" min-width="150">
             <template #default="scope">
-              <el-button size="small" @click="openEditDialog(scope.row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDelete(scope.row.id)">删除</el-button>
+              <el-button size="small" type="primary" link @click="openEditDialog(scope.row)">编辑</el-button>
+              <el-button size="small" type="danger" link @click="handleDelete(scope.row.id)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
       </el-card>
 
+      <!-- 弹窗 -->
       <el-dialog
         v-model="dialogVisible"
         :title="isEdit ? '编辑学生' : '添加学生'"
         width="500px"
+        align-center
       >
         <el-form :model="form" label-width="80px">
           <el-form-item label="学号">
@@ -171,9 +203,18 @@ onMounted(() => fetchStudents())
 </template>
 
 <style scoped>
-.layout { height: 100vh; }
-.header { background: #fff; border-bottom: 1px solid #dcdfe6; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-.logo { font-size: 20px; font-weight: bold; color: #409EFF; }
-.box-card { max-width: 1000px; margin: 20px auto; }
+.layout { height: 100vh; display: flex; flex-direction: column; }
+.header {
+  background: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 60px;
+}
+.logo { font-size: 18px; font-weight: 600; color: #303133; display: flex; align-items: center; }
+.main-content { background-color: #f5f7fa; padding: 20px; }
+.box-card { margin: 0 auto; border-radius: 8px; }
 .operation-area { margin-bottom: 20px; }
 </style>
