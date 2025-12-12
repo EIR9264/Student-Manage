@@ -51,6 +51,7 @@ const handleLogin = async () => {
     if (res.data.success) {
       ElMessage.success('登录成功！')
       localStorage.setItem('token', res.data.token)
+      localStorage.setItem('userInfo', JSON.stringify(res.data.userInfo))
       router.push('/student')
     } else {
       ElMessage.error(res.data.message)
@@ -62,6 +63,10 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const goToRegister = () => {
+  router.push('/register')
 }
 
 // --- Canvas 动画逻辑 ---
@@ -245,6 +250,7 @@ onUnmounted(() => {
         </el-form-item>
 
         <el-button type="primary" class="w-100" :loading="loading" @click="handleLogin">登录</el-button>
+        <el-button text class="w-100" @click="goToRegister" style="margin-top: 10px;">没有账号？去注册</el-button>
       </el-form>
     </el-card>
   </div>

@@ -1,19 +1,13 @@
-package com.example.backend;
+package com.example.backend.dto;
 
-import jakarta.persistence.*;
-
-@Entity
-@Table(name = "students")
-public class Student {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class StudentDTO {
     private Long id;
-
-    private String name; // 姓名
-    private String studentNumber; // 学号
-    private String gender; // 性别
-    private Integer age; // 年龄
-    private String className; // 班级名称
+    private String name;
+    private String studentNumber;
+    private String gender;
+    private Integer age;
+    private String className;
+    private String password; // 只有管理员能看到
 
     // Getters and Setters
     public Long getId() {
@@ -62,5 +56,13 @@ public class Student {
 
     public void setClassName(String className) {
         this.className = className;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

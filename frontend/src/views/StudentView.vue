@@ -1,17 +1,22 @@
 <script setup>
-import { ref, onMounted, reactive, watch } from 'vue' // 引入 watch
-import axios from 'axios'
+import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
+import request from '../api/request'
 
 const router = useRouter()
-const API_URL = 'http://localhost:8080/api/students'
 
 const students = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const searchKeyword = ref('')
+const selectedClass = ref('')
+const classList = ref([])
+
+// 获取用户信息
+const userInfo = ref({})
+const isAdmin = computed(() => userInfo.value.role === 'ADMIN')
 
 // 表单数据
 const form = reactive({
@@ -19,40 +24,51 @@ const form = reactive({
   name: '',
   studentNumber: '',
   gender: '男',
-  age: 18
+  age: 18,
+  className: '',
+  password: ''
 })
 
-// 登出
-const logout = () => {
-  localStorage.removeItem('token')
-  router.push('/login')
-  ElMessage.info('已退出登录')
+// 获取用户信息
+const fetchUserInfo = () => {
+  const storedUserInfo = localStorage.getItem('userInfo')
+  if (storedUserInfo) {
+    userInfo.value = JSON.parse(storedUserInfo)
+  }
 }
 
-// 获取列表核心逻辑
+// 获取班级列表
+const fetchClasses = async () => {
+  try {
+    const res = await request.get('/students/classes')
+    classList.value = res.data
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+// 获取学生列表
 const fetchStudents = async () => {
   loading.value = true
   try {
-    const res = await axios.get(API_URL, {
-      params: { keyword: searchKeyword.value }
+    const res = await request.get('/students', {
+      params: {
+        keyword: searchKeyword.value,
+        className: selectedClass.value
+      }
     })
     students.value = res.data
   } catch (e) {
     console.error(e)
-    ElMessage.error('获取数据失败')
   } finally {
     loading.value = false
   }
 }
 
-// --- 热加载搜索 (防抖实现) ---
+// 热加载搜索 (防抖实现)
 let timer = null
-// 监听搜索框的变化
-watch(searchKeyword, () => {
-  // 如果之前有定时器，先清除（说明用户还在打字）
+watch([searchKeyword, selectedClass], () => {
   if (timer) clearTimeout(timer)
-
-  // 重新设置定时器，300ms 后执行搜索
   timer = setTimeout(() => {
     fetchStudents()
   }, 300)
@@ -66,6 +82,8 @@ const openAddDialog = () => {
   form.studentNumber = ''
   form.gender = '男'
   form.age = 18
+  form.className = ''
+  form.password = '123'
   dialogVisible.value = true
 }
 
@@ -73,28 +91,36 @@ const openAddDialog = () => {
 const openEditDialog = (row) => {
   isEdit.value = true
   Object.assign(form, row)
+  form.password = '' // 编辑时密码为空，如果不修改就不传
   dialogVisible.value = true
 }
 
 // 保存数据
 const handleSave = async () => {
-  if (!form.name || !form.studentNumber) return ElMessage.warning('姓名和学号不能为空')
+  if (!form.name || !form.studentNumber) {
+    ElMessage.warning('姓名和学号不能为空')
+    return
+  }
 
   try {
     if (isEdit.value) {
-      // 修复：直接 await，不再定义未使用的 res 变量
-      await axios.put(`${API_URL}/${form.id}`, form)
-      fetchStudents()
-      ElMessage.success('修改成功')
+      const res = await request.put(`/students/${form.id}`, form)
+      if (res.data.success) {
+        fetchStudents()
+        ElMessage.success('修改成功')
+        dialogVisible.value = false
+      }
     } else {
-      await axios.post(API_URL, form)
-      fetchStudents()
-      ElMessage.success('添加成功')
+      const res = await request.post('/students', form)
+      if (res.data.success) {
+        fetchStudents()
+        fetchClasses() // 刷新班级列表
+        ElMessage.success('添加成功')
+        dialogVisible.value = false
+      }
     }
-    dialogVisible.value = false
   } catch (e) {
     console.error(e)
-    ElMessage.error('操作失败')
   }
 }
 
@@ -106,16 +132,35 @@ const handleDelete = (id) => {
     type: 'warning',
   }).then(async () => {
     try {
-      await axios.delete(`${API_URL}/${id}`)
-      fetchStudents()
-      ElMessage.success('删除成功')
+      const res = await request.delete(`/students/${id}`)
+      if (res.data.success) {
+        fetchStudents()
+        ElMessage.success('删除成功')
+      }
     } catch (e) {
-      ElMessage.error('删除失败：'+e)
+      console.error(e)
     }
   })
 }
 
-onMounted(() => fetchStudents())
+// 去个人中心
+const goToProfile = () => {
+  router.push('/profile')
+}
+
+// 登出
+const logout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  router.push('/login')
+  ElMessage.info('已退出登录')
+}
+
+onMounted(() => {
+  fetchUserInfo()
+  fetchStudents()
+  fetchClasses()
+})
 </script>
 
 <template>
@@ -125,24 +170,54 @@ onMounted(() => fetchStudents())
         <el-icon style="margin-right: 8px; vertical-align: middle;"><Management /></el-icon>
         <span>学生管理系统</span>
       </div>
-      <el-button type="danger" plain size="small" @click="logout">退出登录</el-button>
+      <div class="header-right">
+        <el-tag :type="isAdmin ? 'danger' : ''" style="margin-right: 10px;">
+          {{ isAdmin ? '管理员' : '普通用户' }}
+        </el-tag>
+        <el-button type="primary" plain size="small" @click="goToProfile" style="margin-right: 10px;">
+          个人中心
+        </el-button>
+        <el-button type="danger" plain size="small" @click="logout">退出登录</el-button>
+      </div>
     </el-header>
 
     <el-main class="main-content">
       <el-card class="box-card" shadow="hover">
         <div class="operation-area">
           <el-row :gutter="20">
-            <el-col :span="8">
-              <!-- 搜索框：去掉了按钮触发，改为自动监听 -->
+            <el-col :span="6">
+              <el-select
+                v-model="selectedClass"
+                placeholder="选择班级"
+                clearable
+                style="width: 100%;"
+              >
+                <el-option label="全部班级" value="" />
+                <el-option
+                  v-for="className in classList"
+                  :key="className"
+                  :label="className"
+                  :value="className"
+                />
+              </el-select>
+            </el-col>
+            <el-col :span="6">
               <el-input
                 v-model="searchKeyword"
-                placeholder="输入姓名或学号，自动搜索..."
+                placeholder="输入姓名或学号搜索..."
                 clearable
                 prefix-icon="Search"
               />
             </el-col>
-            <el-col :span="16" style="text-align: right;">
-              <el-button type="primary" icon="Plus" @click="openAddDialog">添加学生</el-button>
+            <el-col :span="12" style="text-align: right;">
+              <el-button
+                v-if="isAdmin"
+                type="primary"
+                icon="Plus"
+                @click="openAddDialog"
+              >
+                添加学生
+              </el-button>
             </el-col>
           </el-row>
         </div>
@@ -153,15 +228,22 @@ onMounted(() => fetchStudents())
           <el-table-column prop="name" label="姓名" width="120" />
           <el-table-column prop="gender" label="性别" width="100">
             <template #default="scope">
-              <el-tag :type="scope.row.gender === '男' ? '' : 'danger'" effect="plain">{{ scope.row.gender }}</el-tag>
+              <el-tag :type="scope.row.gender === '男' ? '' : 'danger'" effect="plain">
+                {{ scope.row.gender }}
+              </el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="age" label="年龄" width="100" sortable />
+          <el-table-column prop="className" label="班级" width="150" />
 
-          <el-table-column label="操作" min-width="150">
+          <el-table-column v-if="isAdmin" label="操作" min-width="150">
             <template #default="scope">
-              <el-button size="small" type="primary" link @click="openEditDialog(scope.row)">编辑</el-button>
-              <el-button size="small" type="danger" link @click="handleDelete(scope.row.id)">删除</el-button>
+              <el-button size="small" type="primary" link @click="openEditDialog(scope.row)">
+                编辑
+              </el-button>
+              <el-button size="small" type="danger" link @click="handleDelete(scope.row.id)">
+                删除
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -190,6 +272,25 @@ onMounted(() => fetchStudents())
           <el-form-item label="年龄">
             <el-input-number v-model="form.age" :min="1" :max="100" />
           </el-form-item>
+          <el-form-item label="班级">
+            <el-input v-model="form.className" placeholder="请输入班级名称" />
+          </el-form-item>
+          <el-form-item v-if="isAdmin && isEdit" label="密码">
+            <el-input
+              v-model="form.password"
+              type="password"
+              placeholder="不修改请留空"
+              show-password
+            />
+            <span style="font-size: 12px; color: #909399;">留空则不修改密码</span>
+          </el-form-item>
+          <el-form-item v-if="!isEdit">
+            <el-alert
+              title="提示：新增学生将自动创建登录账号，默认密码为123"
+              type="info"
+              :closable="false"
+            />
+          </el-form-item>
         </el-form>
         <template #footer>
           <span class="dialog-footer">
@@ -203,7 +304,12 @@ onMounted(() => fetchStudents())
 </template>
 
 <style scoped>
-.layout { height: 100vh; display: flex; flex-direction: column; }
+.layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .header {
   background: #fff;
   border-bottom: 1px solid #e4e7ed;
@@ -213,8 +319,31 @@ onMounted(() => fetchStudents())
   padding: 0 20px;
   height: 60px;
 }
-.logo { font-size: 18px; font-weight: 600; color: #303133; display: flex; align-items: center; }
-.main-content { background-color: #f5f7fa; padding: 20px; }
-.box-card { margin: 0 auto; border-radius: 8px; }
-.operation-area { margin-bottom: 20px; }
+
+.logo {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.main-content {
+  background-color: #f5f7fa;
+  padding: 20px;
+}
+
+.box-card {
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+.operation-area {
+  margin-bottom: 20px;
+}
 </style>
