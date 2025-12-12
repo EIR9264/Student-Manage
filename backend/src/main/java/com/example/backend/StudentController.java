@@ -84,8 +84,11 @@ public class StudentController {
             studentDetails.setClassName((String) requestData.get("className"));
 
             String newPassword = (String) requestData.get("password");
+            String newRole = (String) requestData.get("role");
+            String newEmail = (String) requestData.get("email");
+            String newPhone = (String) requestData.get("phone");
 
-            Student updatedStudent = studentService.updateStudent(id, studentDetails, newPassword);
+            Student updatedStudent = studentService.updateStudent(id, studentDetails, newPassword, newRole, newEmail, newPhone);
             result.put("success", true);
             result.put("message", "更新成功");
             result.put("data", updatedStudent);

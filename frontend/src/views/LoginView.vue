@@ -224,10 +224,10 @@ onUnmounted(() => {
       </template>
       <el-form :model="form" label-position="top">
         <el-form-item label="用户名">
-          <el-input v-model="form.username" placeholder="admin" prefix-icon="User" />
+          <el-input v-model="form.username" placeholder="username" prefix-icon="User" />
         </el-form-item>
         <el-form-item label="密码">
-          <el-input v-model="form.password" type="password" placeholder="123" prefix-icon="Lock" />
+          <el-input v-model="form.password" type="password" placeholder="password" prefix-icon="Lock" />
         </el-form-item>
 
         <el-form-item label="验证码">

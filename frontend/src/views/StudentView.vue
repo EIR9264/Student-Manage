@@ -26,7 +26,10 @@ const form = reactive({
   gender: '男',
   age: 18,
   className: '',
-  password: ''
+  password: '',
+  role: 'USER',
+  email: '',
+  phone: ''
 })
 
 // 获取用户信息
@@ -84,6 +87,9 @@ const openAddDialog = () => {
   form.age = 18
   form.className = ''
   form.password = '123'
+  form.role = 'USER'
+  form.email = ''
+  form.phone = ''
   dialogVisible.value = true
 }
 
@@ -92,6 +98,9 @@ const openEditDialog = (row) => {
   isEdit.value = true
   Object.assign(form, row)
   form.password = '' // 编辑时密码为空，如果不修改就不传
+  form.role = row.role || 'USER' // 确保角色有值
+  form.email = row.email || ''
+  form.phone = row.phone || ''
   dialogVisible.value = true
 }
 
@@ -222,26 +231,41 @@ onMounted(() => {
           </el-row>
         </div>
 
-        <el-table :data="students" v-loading="loading" style="width: 100%" border stripe>
-          <el-table-column prop="id" label="ID" width="80" sortable />
-          <el-table-column prop="studentNumber" label="学号" width="150" sortable />
-          <el-table-column prop="name" label="姓名" width="120" />
-          <el-table-column prop="gender" label="性别" width="100">
+        <el-table :data="students" v-loading="loading" style="width: 100%" stripe table-layout="auto">
+          <el-table-column prop="id" label="ID" sortable />
+          <el-table-column prop="studentNumber" label="学号" sortable />
+          <el-table-column prop="name" label="姓名">
+            <template #default="scope">
+              <span :class="{
+                'name-super-admin': scope.row.username === 'admin',
+                'name-admin': scope.row.role === 'ADMIN' && scope.row.username !== 'admin'
+              }">
+                {{ scope.row.name }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="gender" label="性别">
             <template #default="scope">
               <el-tag :type="scope.row.gender === '男' ? '' : 'danger'" effect="plain">
                 {{ scope.row.gender }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="age" label="年龄" width="100" sortable />
-          <el-table-column prop="className" label="班级" width="150" />
+          <el-table-column prop="age" label="年龄" sortable />
+          <el-table-column prop="className" label="班级" />
 
-          <el-table-column v-if="isAdmin" label="操作" min-width="150">
+          <el-table-column v-if="isAdmin" label="操作">
             <template #default="scope">
               <el-button size="small" type="primary" link @click="openEditDialog(scope.row)">
                 编辑
               </el-button>
-              <el-button size="small" type="danger" link @click="handleDelete(scope.row.id)">
+              <el-button
+                v-if="scope.row.username !== 'admin' && scope.row.username!==userInfo.username"
+                size="small"
+                type="danger"
+                link
+                @click="handleDelete(scope.row.id)"
+              >
                 删除
               </el-button>
             </template>
@@ -269,11 +293,23 @@ onMounted(() => {
               <el-radio label="女" value="女">女</el-radio>
             </el-radio-group>
           </el-form-item>
+          <el-form-item v-if="userInfo.username === 'admin'" label="角色">
+            <el-radio-group v-model="form.role">
+              <el-radio label="USER" value="USER">普通用户</el-radio>
+              <el-radio label="ADMIN" value="ADMIN">管理员</el-radio>
+            </el-radio-group>
+          </el-form-item>
           <el-form-item label="年龄">
             <el-input-number v-model="form.age" :min="1" :max="100" />
           </el-form-item>
           <el-form-item label="班级">
             <el-input v-model="form.className" placeholder="请输入班级名称" />
+          </el-form-item>
+          <el-form-item v-if="isEdit" label="邮箱">
+            <el-input v-model="form.email" placeholder="请输入邮箱" />
+          </el-form-item>
+          <el-form-item v-if="isEdit" label="手机号">
+            <el-input v-model="form.phone" placeholder="请输入手机号" />
           </el-form-item>
           <el-form-item v-if="isAdmin && isEdit" label="密码">
             <el-input
@@ -345,5 +381,35 @@ onMounted(() => {
 
 .operation-area {
   margin-bottom: 20px;
+}
+
+.name-super-admin {
+  color: #e6a23c !important;
+  font-weight: 600 !important;
+}
+
+.name-admin {
+  color: #67c23a !important;
+  font-weight: 600 !important;
+}
+
+/* 禁止表格列宽拖动 */
+:deep(.el-table__header-wrapper .el-table__header colgroup col) {
+  width: auto !important;
+}
+
+:deep(.el-table .el-table__border-left-patch),
+:deep(.el-table__header th.el-table__cell > .cell.highlight),
+:deep(.el-table th.el-table__cell.is-leaf) {
+  border-right-color: transparent;
+}
+
+:deep(.el-table__header th .el-table__column-resize-proxy),
+:deep(.el-table .el-table__column-resize-proxy) {
+  display: none !important;
+}
+
+:deep(.el-table th.el-table__cell) {
+  cursor: default !important;
 }
 </style>
