@@ -285,7 +285,7 @@ onMounted(() => {
             <el-input v-model="form.studentNumber" placeholder="请输入学号" />
           </el-form-item>
           <el-form-item label="姓名">
-            <el-input v-model="form.name" placeholder="请输入姓名" />
+            <el-input v-model="form.name" placeholder="请输入姓名" :disabled="isEdit && form.username === 'admin'" />
           </el-form-item>
           <el-form-item label="性别">
             <el-radio-group v-model="form.gender">
@@ -293,7 +293,7 @@ onMounted(() => {
               <el-radio label="女" value="女">女</el-radio>
             </el-radio-group>
           </el-form-item>
-          <el-form-item v-if="userInfo.username === 'admin'" label="角色">
+          <el-form-item v-if="userInfo.username === 'admin' && form.username !== 'admin'" label="角色">
             <el-radio-group v-model="form.role">
               <el-radio label="USER" value="USER">普通用户</el-radio>
               <el-radio label="ADMIN" value="ADMIN">管理员</el-radio>
@@ -393,23 +393,4 @@ onMounted(() => {
   font-weight: 600 !important;
 }
 
-/* 禁止表格列宽拖动 */
-:deep(.el-table__header-wrapper .el-table__header colgroup col) {
-  width: auto !important;
-}
-
-:deep(.el-table .el-table__border-left-patch),
-:deep(.el-table__header th.el-table__cell > .cell.highlight),
-:deep(.el-table th.el-table__cell.is-leaf) {
-  border-right-color: transparent;
-}
-
-:deep(.el-table__header th .el-table__column-resize-proxy),
-:deep(.el-table .el-table__column-resize-proxy) {
-  display: none !important;
-}
-
-:deep(.el-table th.el-table__cell) {
-  cursor: default !important;
-}
 </style>

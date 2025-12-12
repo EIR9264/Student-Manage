@@ -49,12 +49,15 @@ public class StudentService {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("学生不存在"));
 
-        // 检查是否是超级管理员 admin，只允许修改基本信息，不允许修改角色
+        // 检查是否是超级管理员 admin
         final boolean isAdminUser = userRepository.findByStudentId(id)
                 .map(user -> "admin".equals(user.getUsername()))
                 .orElse(false);
 
-        student.setName(studentDetails.getName());
+        // admin 的名字不能被修改
+        if (!isAdminUser) {
+            student.setName(studentDetails.getName());
+        }
         student.setStudentNumber(studentDetails.getStudentNumber());
         student.setAge(studentDetails.getAge());
         student.setGender(studentDetails.getGender());
