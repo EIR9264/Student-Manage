@@ -9,7 +9,14 @@ const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: RegisterView },
   { path: '/student', component: StudentView },
-  { path: '/profile', component: ProfileView }
+  { path: '/profile', component: ProfileView },
+  // 课程相关路由
+  { path: '/courses', component: () => import('../views/CourseListView.vue') },
+  { path: '/courses/:id', component: () => import('../views/CourseDetailView.vue') },
+  { path: '/my-courses', component: () => import('../views/MyCoursesView.vue') },
+  { path: '/calendar', component: () => import('../views/CourseCalendarView.vue') },
+  // 管理员路由
+  { path: '/course-manage', component: () => import('../views/CourseManageView.vue') }
 ]
 
 const router = createRouter({

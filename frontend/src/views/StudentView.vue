@@ -2,9 +2,32 @@
 import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { Management, User, Reading, Collection, Calendar, Setting } from '@element-plus/icons-vue'
 import request from '../api/request'
 
 const router = useRouter()
+const activeMenu = ref('student')
+
+// 导航菜单选择
+const handleMenuSelect = (index) => {
+  switch (index) {
+    case 'student':
+      // 当前页面，不跳转
+      break
+    case 'courses':
+      router.push('/courses')
+      break
+    case 'my-courses':
+      router.push('/my-courses')
+      break
+    case 'calendar':
+      router.push('/calendar')
+      break
+    case 'course-manage':
+      router.push('/course-manage')
+      break
+  }
+}
 
 const students = ref([])
 const loading = ref(false)
@@ -179,8 +202,32 @@ onMounted(() => {
         <el-icon style="margin-right: 8px; vertical-align: middle;"><Management /></el-icon>
         <span>学生管理系统</span>
       </div>
+      <div class="nav-menu">
+        <el-menu mode="horizontal" :default-active="activeMenu" @select="handleMenuSelect">
+          <el-menu-item index="student">
+            <el-icon><User /></el-icon>
+            <span>学生管理</span>
+          </el-menu-item>
+          <el-menu-item index="courses">
+            <el-icon><Reading /></el-icon>
+            <span>课程中心</span>
+          </el-menu-item>
+          <el-menu-item index="my-courses">
+            <el-icon><Collection /></el-icon>
+            <span>我的课程</span>
+          </el-menu-item>
+          <el-menu-item index="calendar">
+            <el-icon><Calendar /></el-icon>
+            <span>课程日历</span>
+          </el-menu-item>
+          <el-menu-item v-if="isAdmin" index="course-manage">
+            <el-icon><Setting /></el-icon>
+            <span>课程管理</span>
+          </el-menu-item>
+        </el-menu>
+      </div>
       <div class="header-right">
-        <el-tag :type="isAdmin ? 'danger' : ''" style="margin-right: 10px;">
+        <el-tag :type="isAdmin ? 'danger' : 'info'" style="margin-right: 10px;">
           {{ isAdmin ? '管理员' : '普通用户' }}
         </el-tag>
         <el-button type="primary" plain size="small" @click="goToProfile" style="margin-right: 10px;">
@@ -362,11 +409,28 @@ onMounted(() => {
   color: #303133;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+}
+
+.nav-menu {
+  flex: 1;
+  margin: 0 20px;
+}
+
+.nav-menu .el-menu {
+  border-bottom: none;
+  background: transparent;
+}
+
+.nav-menu .el-menu-item {
+  height: 60px;
+  line-height: 60px;
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .main-content {
