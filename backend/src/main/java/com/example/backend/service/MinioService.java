@@ -20,6 +20,9 @@ public class MinioService {
     @Value("${minio.bucket.attachment}")
     private String attachmentBucket;
 
+    @Value("${minio.bucket.avatar:avatars}")
+    private String avatarBucket;
+
     /**
      * 确保bucket存在
      */
@@ -122,5 +125,59 @@ public class MinioService {
 
     public String getAttachmentBucket() {
         return attachmentBucket;
+    }
+
+    /**
+     * 上传头像
+     */
+    public String uploadAvatar(MultipartFile file, Long userId) {
+        try {
+            ensureBucketExists(avatarBucket);
+
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+
+            // 验证文件类型
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new RuntimeException("只能上传图片文件");
+            }
+
+            // 生成存储路径: userId/uuid.ext
+            String objectName = userId + "/" + UUID.randomUUID().toString() + extension;
+
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(avatarBucket)
+                    .object(objectName)
+                    .stream(file.getInputStream(), file.getSize(), -1)
+                    .contentType(contentType)
+                    .build());
+
+            return objectName;
+        } catch (Exception e) {
+            throw new RuntimeException("头像上传失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 获取头像URL
+     */
+    public String getAvatarUrl(String objectName) {
+        if (objectName == null || objectName.isEmpty()) {
+            return null;
+        }
+        try {
+            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+                    .bucket(avatarBucket)
+                    .object(objectName)
+                    .method(Method.GET)
+                    .expiry(7, TimeUnit.DAYS)
+                    .build());
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

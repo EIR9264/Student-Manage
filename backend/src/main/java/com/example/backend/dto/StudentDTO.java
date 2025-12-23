@@ -12,6 +12,8 @@ public class StudentDTO {
     private String username; // 用户登录名，用于判断超级管理员
     private String email;
     private String phone;
+    private String avatar; // 头像存储路径
+    private String avatarUrl; // 头像访问URL
 
     // Getters and Setters
     public Long getId() {
@@ -100,5 +102,21 @@ public class StudentDTO {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 }

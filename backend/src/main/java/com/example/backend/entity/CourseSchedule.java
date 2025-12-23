@@ -35,6 +35,12 @@ public class CourseSchedule {
     @Column(name = "week_type", length = 10)
     private String weekType = "ALL"; // ALL全部/ODD单周/EVEN双周
 
+    @Column(name = "section_start")
+    private Integer sectionStart; // 开始节次 1-12
+
+    @Column(name = "section_end")
+    private Integer sectionEnd; // 结束节次 1-12
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -122,5 +128,21 @@ public class CourseSchedule {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Integer getSectionStart() {
+        return sectionStart;
+    }
+
+    public void setSectionStart(Integer sectionStart) {
+        this.sectionStart = sectionStart;
+    }
+
+    public Integer getSectionEnd() {
+        return sectionEnd;
+    }
+
+    public void setSectionEnd(Integer sectionEnd) {
+        this.sectionEnd = sectionEnd;
     }
 }

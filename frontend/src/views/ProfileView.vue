@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import request from '../api/request'
 import { useRouter } from 'vue-router'
 
@@ -8,6 +9,8 @@ const router = useRouter()
 const userInfo = ref({})
 const loading = ref(false)
 const passwordDialogVisible = ref(false)
+const avatarUrl = ref('')
+const uploadLoading = ref(false)
 
 const passwordForm = ref({
   oldPassword: '',
@@ -23,10 +26,52 @@ const fetchUserInfo = async () => {
     if (res.data.success) {
       userInfo.value = res.data.data
     }
+    // 获取头像
+    const avatarRes = await request.get('/avatar/url')
+    if (avatarRes.data.success && avatarRes.data.data.avatarUrl) {
+      avatarUrl.value = avatarRes.data.data.avatarUrl
+    }
   } catch (e) {
     console.error(e)
   } finally {
     loading.value = false
+  }
+}
+
+// 头像上传前校验
+const beforeAvatarUpload = (file) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt2M = file.size / 1024 / 1024 < 2
+
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return false
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return false
+  }
+  return true
+}
+
+// 自定义头像上传
+const handleAvatarUpload = async (options) => {
+  uploadLoading.value = true
+  const formData = new FormData()
+  formData.append('file', options.file)
+
+  try {
+    const res = await request.post('/avatar/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (res.data.success) {
+      avatarUrl.value = res.data.data.avatarUrl
+      ElMessage.success('头像上传成功')
+    }
+  } catch (e) {
+    ElMessage.error('头像上传失败')
+  } finally {
+    uploadLoading.value = false
   }
 }
 
@@ -108,6 +153,21 @@ onMounted(() => {
         </template>
 
         <el-form :model="userInfo" label-width="100px">
+          <el-form-item label="头像">
+            <el-upload
+              class="avatar-uploader"
+              :show-file-list="false"
+              :http-request="handleAvatarUpload"
+              :before-upload="beforeAvatarUpload"
+            >
+              <img v-if="avatarUrl" :src="avatarUrl" class="avatar" />
+              <el-icon v-else class="avatar-uploader-icon" :class="{ 'is-loading': uploadLoading }">
+                <Plus />
+              </el-icon>
+            </el-upload>
+            <span class="tip">点击上传头像，支持 jpg/png 格式，大小不超过 2MB</span>
+          </el-form-item>
+
           <el-form-item label="用户名">
             <el-input v-model="userInfo.username" disabled />
             <span class="tip">用户名不可修改</span>
@@ -206,5 +266,43 @@ onMounted(() => {
   font-size: 12px;
   color: #909399;
   margin-left: 10px;
+}
+
+.avatar-uploader {
+  display: inline-block;
+}
+
+.avatar-uploader .avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 100px;
+  height: 100px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.avatar-uploader-icon:hover {
+  border-color: #409eff;
+  color: #409eff;
+}
+
+.avatar-uploader-icon.is-loading {
+  animation: rotating 2s linear infinite;
+}
+
+@keyframes rotating {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

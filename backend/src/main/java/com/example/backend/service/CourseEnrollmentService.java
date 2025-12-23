@@ -35,6 +35,9 @@ public class CourseEnrollmentService {
     @Autowired
     private StudentRepository studentRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Value("${enrollment.max-courses:10}")
     private int maxCoursesPerStudent;
 
@@ -51,9 +54,40 @@ public class CourseEnrollmentService {
             throw new RuntimeException("该课程当前不可选");
         }
 
-        // 检查是否已选
-        if (enrollmentRepository.existsByCourseIdAndStudentIdAndEnrollmentStatus(courseId, studentId, "ENROLLED")) {
-            throw new RuntimeException("您已选择该课程");
+        // 检查是否已选（包括已退课的情况）
+        Optional<CourseEnrollment> existingEnrollment = enrollmentRepository.findByCourseIdAndStudentId(courseId, studentId);
+
+        if (existingEnrollment.isPresent()) {
+            CourseEnrollment existing = existingEnrollment.get();
+            if ("ENROLLED".equals(existing.getEnrollmentStatus())) {
+                throw new RuntimeException("您已选择该课程");
+            }
+            // 如果是已退课状态，重新激活
+            if ("DROPPED".equals(existing.getEnrollmentStatus())) {
+                // 先检查时间冲突
+                checkScheduleConflict(courseId, studentId);
+
+                existing.setEnrollmentStatus("ENROLLED");
+                existing.setEnrolledAt(LocalDateTime.now());
+                existing.setDroppedAt(null);
+                enrollmentRepository.save(existing);
+
+                // 增加课程选课人数
+                if (course.getMaxStudents() > 0) {
+                    courseRepository.incrementCurrentStudents(courseId);
+                }
+
+                // 发送通知
+                notificationService.sendNotification(userId, "选课成功",
+                    "您已成功选择课程「" + course.getCourseName() + "」", "ENROLL_SUCCESS", courseId);
+
+                EnrollmentDTO dto = EnrollmentDTO.fromEntity(existing);
+                dto.setCourseCode(course.getCourseCode());
+                dto.setCourseName(course.getCourseName());
+                dto.setTeacherName(course.getTeacherName());
+                dto.setCredit(course.getCredit());
+                return dto;
+            }
         }
 
         // 检查选课数量限制
@@ -61,6 +95,9 @@ public class CourseEnrollmentService {
         if (enrolledCount >= maxCoursesPerStudent) {
             throw new RuntimeException("选课数量已达上限（最多" + maxCoursesPerStudent + "门）");
         }
+
+        // 检查时间冲突
+        checkScheduleConflict(courseId, studentId);
 
         // 检查课程容量（乐观锁）
         if (course.getMaxStudents() > 0) {
@@ -86,7 +123,68 @@ public class CourseEnrollmentService {
         dto.setTeacherName(course.getTeacherName());
         dto.setCredit(course.getCredit());
 
+        // 发送选课成功通知
+        notificationService.sendNotification(
+            userId,
+            "选课成功",
+            "您已成功选择课程「" + course.getCourseName() + "」",
+            "ENROLL_SUCCESS",
+            courseId
+        );
+
         return dto;
+    }
+
+    /**
+     * 检查选课时间冲突
+     */
+    private void checkScheduleConflict(Long newCourseId, Long studentId) {
+        // 获取新课程的时间安排
+        List<CourseSchedule> newSchedules = scheduleRepository.findByCourseId(newCourseId);
+        if (newSchedules.isEmpty()) {
+            return; // 没有时间安排，不检查冲突
+        }
+
+        // 获取学生已选课程的时间安排
+        List<CourseSchedule> enrolledSchedules = scheduleRepository.findByStudentEnrolled(studentId);
+
+        for (CourseSchedule newSch : newSchedules) {
+            for (CourseSchedule existSch : enrolledSchedules) {
+                // 同一天
+                if (newSch.getDayOfWeek().equals(existSch.getDayOfWeek())) {
+                    // 检查节次冲突
+                    if (newSch.getSectionStart() != null && existSch.getSectionStart() != null) {
+                        int newStart = newSch.getSectionStart();
+                        int newEnd = newSch.getSectionEnd() != null ? newSch.getSectionEnd() : newStart;
+                        int existStart = existSch.getSectionStart();
+                        int existEnd = existSch.getSectionEnd() != null ? existSch.getSectionEnd() : existStart;
+
+                        // 节次重叠检查
+                        if (!(newEnd < existStart || newStart > existEnd)) {
+                            Course conflictCourse = courseRepository.findById(existSch.getCourseId()).orElse(null);
+                            String conflictName = conflictCourse != null ? conflictCourse.getCourseName() : "未知课程";
+                            String dayName = getDayName(newSch.getDayOfWeek());
+                            throw new RuntimeException("时间冲突：与「" + conflictName + "」在" + dayName +
+                                "第" + existStart + "-" + existEnd + "节冲突");
+                        }
+                    }
+                    // 检查时间冲突（备用）
+                    else if (newSch.getStartTime() != null && existSch.getStartTime() != null) {
+                        if (!(newSch.getEndTime().isBefore(existSch.getStartTime()) ||
+                              newSch.getStartTime().isAfter(existSch.getEndTime()))) {
+                            Course conflictCourse = courseRepository.findById(existSch.getCourseId()).orElse(null);
+                            String conflictName = conflictCourse != null ? conflictCourse.getCourseName() : "未知课程";
+                            throw new RuntimeException("时间冲突：与「" + conflictName + "」时间重叠");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private String getDayName(int dayOfWeek) {
+        String[] days = {"", "周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+        return dayOfWeek >= 1 && dayOfWeek <= 7 ? days[dayOfWeek] : "周" + dayOfWeek;
     }
 
     /**
@@ -197,6 +295,8 @@ public class CourseEnrollmentService {
                     props.put("classroom", schedule.getClassroom());
                     props.put("teacherName", course.getTeacherName());
                     props.put("scheduleId", schedule.getId()); // 保留原始的schedule ID
+                    props.put("sectionStart", schedule.getSectionStart());
+                    props.put("sectionEnd", schedule.getSectionEnd());
                     event.setExtendedProps(props);
 
                     events.add(event);

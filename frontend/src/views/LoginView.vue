@@ -34,7 +34,7 @@ const fetchCaptcha = async () => {
     captchaUrl.value = res.data.image
     form.captchaCode = ''
   } catch (e) {
-    console.error(e)
+    // 静默处理
     ElMessage.error('验证码加载失败')
   }
 }
@@ -52,13 +52,13 @@ const handleLogin = async () => {
       ElMessage.success('登录成功！')
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('userInfo', JSON.stringify(res.data.userInfo))
-      router.push('/student')
+      router.push('/')
     } else {
       ElMessage.error(res.data.message)
       fetchCaptcha()
     }
   } catch (e) {
-    console.error(e)
+    // 静默处理
     ElMessage.error('连接服务器失败')
   } finally {
     loading.value = false

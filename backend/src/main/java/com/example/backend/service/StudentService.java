@@ -1,8 +1,10 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.StudentDTO;
+import com.example.backend.entity.ClassInfo;
 import com.example.backend.entity.Student;
 import com.example.backend.entity.User;
+import com.example.backend.repository.ClassInfoRepository;
 import com.example.backend.repository.StudentRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.util.PasswordUtil;
@@ -22,15 +24,26 @@ public class StudentService {
     private UserRepository userRepository;
 
     @Autowired
+    private ClassInfoRepository classInfoRepository;
+
+    @Autowired
     private PasswordUtil passwordUtil;
+
+    @Autowired
+    private MinioService minioService;
 
     // 创建学生（同时创建User账号）
     @Transactional
     public Student createStudent(Student student) {
-        // 如果没有指定班级，设置默认值
+        // 验证班级必须存在
         if (student.getClassName() == null || student.getClassName().trim().isEmpty()) {
-            student.setClassName("未分配");
+            throw new RuntimeException("请选择班级");
         }
+
+        ClassInfo classInfo = classInfoRepository.findByName(student.getClassName())
+                .orElseThrow(() -> new RuntimeException("班级不存在，请先创建班级"));
+
+        student.setClassId(classInfo.getId());
 
         // 保存学生信息
         Student savedStudent = studentRepository.save(student);
@@ -122,6 +135,12 @@ public class StudentService {
         dto.setAge(student.getAge());
         dto.setClassName(student.getClassName());
 
+        // 设置头像信息
+        dto.setAvatar(student.getAvatar());
+        if (student.getAvatar() != null && !student.getAvatar().isEmpty()) {
+            dto.setAvatarUrl(minioService.getAvatarUrl(student.getAvatar()));
+        }
+
         // 通过 studentId 关联查询用户信息
         userRepository.findByStudentId(student.getId()).ifPresent(user -> {
             dto.setRole(user.getRole());
@@ -154,5 +173,21 @@ public class StudentService {
                 .distinct()
                 .sorted()
                 .toList();
+    }
+
+    // 更新学生头像
+    @Transactional
+    public void updateAvatar(Long studentId, String avatarPath) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("学生不存在"));
+        student.setAvatar(avatarPath);
+        studentRepository.save(student);
+    }
+
+    // 获取学生头像路径
+    public String getAvatarPath(Long studentId) {
+        return studentRepository.findById(studentId)
+                .map(Student::getAvatar)
+                .orElse(null);
     }
 }

@@ -23,6 +23,16 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
+    // 获取单个学生信息
+    @GetMapping("/{id}")
+    public StudentDTO getStudentById(@PathVariable Long id, HttpServletRequest request) {
+        String role = (String) request.getAttribute("role");
+        boolean isAdmin = "ADMIN".equals(role);
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("学生不存在"));
+        return studentService.toStudentDTO(student, isAdmin);
+    }
+
     // 获取列表：支持 ?keyword=xxx&className=xxx 查询
     @GetMapping
     public List<StudentDTO> getAllStudents(

@@ -31,6 +31,9 @@ public class User {
     @Column
     private Long studentId; // 关联的学生ID（如果是学生用户）
 
+    @Column(name = "department_id")
+    private Long departmentId; // 部门ID
+
     @Column(nullable = false)
     private Integer status = 1; // 状态：1启用 0禁用
 
@@ -114,6 +117,14 @@ public class User {
 
     public void setStudentId(Long studentId) {
         this.studentId = studentId;
+    }
+
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Long departmentId) {
+        this.departmentId = departmentId;
     }
 
     public Integer getStatus() {

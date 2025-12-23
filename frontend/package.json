@@ -20,8 +20,11 @@
     "@fullcalendar/interaction": "^6.1.11",
     "@fullcalendar/timegrid": "^6.1.11",
     "@fullcalendar/vue3": "^6.1.11",
+    "@stomp/stompjs": "^7.2.1",
     "axios": "^1.13.2",
     "element-plus": "^2.11.9",
+    "pinia": "^3.0.4",
+    "sockjs-client": "^1.6.1",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3"
   },

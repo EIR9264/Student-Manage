@@ -15,6 +15,12 @@ public class Student {
     private Integer age; // 年龄
     private String className; // 班级名称
 
+    @Column(name = "class_id")
+    private Long classId; // 班级ID
+
+    @Column(length = 500)
+    private String avatar; // 头像存储路径
+
     // Getters and Setters
     public Long getId() {
         return id;
@@ -62,5 +68,21 @@ public class Student {
 
     public void setClassName(String className) {
         this.className = className;
+    }
+
+    public Long getClassId() {
+        return classId;
+    }
+
+    public void setClassId(Long classId) {
+        this.classId = classId;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 }

@@ -121,17 +121,22 @@
                 <el-option v-for="d in 7" :key="d" :label="getDayName(d)" :value="d" />
               </el-select>
             </el-col>
-            <el-col :span="6">
-              <el-time-picker v-model="schedule.startTime" format="HH:mm" value-format="HH:mm:ss" placeholder="开始" />
+            <el-col :span="5">
+              <el-select v-model="schedule.sectionStart" placeholder="开始节次" @change="onSectionStartChange(schedule)">
+                <el-option v-for="s in 12" :key="s" :label="`第${s}节`" :value="s" />
+              </el-select>
             </el-col>
-            <el-col :span="6">
-              <el-time-picker v-model="schedule.endTime" format="HH:mm" value-format="HH:mm:ss" placeholder="结束" />
+            <el-col :span="5">
+              <el-select v-model="schedule.sectionEnd" placeholder="结束节次">
+                <el-option v-for="s in 12" :key="s" :label="`第${s}节`" :value="s" :disabled="s < (schedule.sectionStart || 1)" />
+              </el-select>
             </el-col>
             <el-col :span="5">
               <el-input v-model="schedule.classroom" placeholder="教室" />
             </el-col>
-            <el-col :span="2">
-              <el-button type="danger" circle @click="removeSchedule(index)">
+            <el-col :span="4">
+              <span class="section-time-hint">{{ getSectionTimeHint(schedule) }}</span>
+              <el-button type="danger" circle size="small" @click="removeSchedule(index)">
                 <el-icon><Delete /></el-icon>
               </el-button>
             </el-col>
@@ -373,11 +378,42 @@ const getDayName = (day) => {
   return days[day]
 }
 
+// 节次时间映射
+const sectionTimeMap = {
+  1: { start: '08:00', end: '08:50' },
+  2: { start: '08:50', end: '09:40' },
+  3: { start: '10:00', end: '10:50' },
+  4: { start: '10:50', end: '11:40' },
+  5: { start: '14:00', end: '14:50' },
+  6: { start: '14:50', end: '15:40' },
+  7: { start: '16:00', end: '16:50' },
+  8: { start: '16:50', end: '17:40' },
+  9: { start: '19:00', end: '19:50' },
+  10: { start: '19:50', end: '20:40' },
+  11: { start: '21:00', end: '21:50' },
+  12: { start: '21:50', end: '22:40' }
+}
+
+// 获取节次时间提示
+const getSectionTimeHint = (schedule) => {
+  if (!schedule.sectionStart || !schedule.sectionEnd) return ''
+  const start = sectionTimeMap[schedule.sectionStart]?.start || ''
+  const end = sectionTimeMap[schedule.sectionEnd]?.end || ''
+  return start && end ? `${start}-${end}` : ''
+}
+
+// 当开始节次改变时，自动调整结束节次
+const onSectionStartChange = (schedule) => {
+  if (!schedule.sectionEnd || schedule.sectionEnd < schedule.sectionStart) {
+    schedule.sectionEnd = schedule.sectionStart
+  }
+}
+
 const addSchedule = () => {
   courseForm.value.schedules.push({
     dayOfWeek: 1,
-    startTime: '08:00:00',
-    endTime: '09:40:00',
+    sectionStart: 1,
+    sectionEnd: 2,
     classroom: '',
     weekStart: 1,
     weekEnd: 18,

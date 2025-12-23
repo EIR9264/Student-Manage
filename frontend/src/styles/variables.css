@@ -1,0 +1,44 @@
+:root {
+  /* iOS 颜色系统 */
+  --ios-bg: #f2f2f7;
+  --ios-bg-secondary: #e5e5ea;
+  --ios-card: rgba(255, 255, 255, 0.8);
+  --ios-card-solid: #ffffff;
+  --ios-sidebar: rgba(255, 255, 255, 0.72);
+
+  /* 主题色 */
+  --ios-blue: #007aff;
+  --ios-blue-light: rgba(0, 122, 255, 0.1);
+  --ios-green: #34c759;
+  --ios-red: #ff3b30;
+  --ios-orange: #ff9500;
+  --ios-purple: #af52de;
+
+  /* 文字颜色 */
+  --ios-text: #1c1c1e;
+  --ios-text-secondary: #8e8e93;
+  --ios-text-tertiary: #aeaeb2;
+
+  /* 边框和分割线 */
+  --ios-border: rgba(0, 0, 0, 0.1);
+  --ios-separator: rgba(60, 60, 67, 0.12);
+
+  /* 圆角 */
+  --ios-radius-sm: 8px;
+  --ios-radius: 12px;
+  --ios-radius-lg: 16px;
+  --ios-radius-xl: 20px;
+
+  /* 阴影 */
+  --ios-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --ios-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --ios-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* 布局 */
+  --sidebar-width: 260px;
+  --topbar-height: 64px;
+
+  /* 过渡 */
+  --ios-transition: 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ios-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

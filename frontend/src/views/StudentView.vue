@@ -1,33 +1,9 @@
 <script setup>
 import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter } from 'vue-router'
-import { Management, User, Reading, Collection, Calendar, Setting } from '@element-plus/icons-vue'
+import { Edit, Delete } from '@element-plus/icons-vue'
+import AppLayout from '@/components/AppLayout.vue'
 import request from '../api/request'
-
-const router = useRouter()
-const activeMenu = ref('student')
-
-// 导航菜单选择
-const handleMenuSelect = (index) => {
-  switch (index) {
-    case 'student':
-      // 当前页面，不跳转
-      break
-    case 'courses':
-      router.push('/courses')
-      break
-    case 'my-courses':
-      router.push('/my-courses')
-      break
-    case 'calendar':
-      router.push('/calendar')
-      break
-    case 'course-manage':
-      router.push('/course-manage')
-      break
-  }
-}
 
 const students = ref([])
 const loading = ref(false)
@@ -36,8 +12,10 @@ const isEdit = ref(false)
 const searchKeyword = ref('')
 const selectedClass = ref('')
 const classList = ref([])
+const classManageVisible = ref(false)
+const classForm = reactive({ id: null, name: '' })
+const isClassEdit = ref(false)
 
-// 获取用户信息
 const userInfo = ref({})
 const isAdmin = computed(() => userInfo.value.role === 'ADMIN')
 
@@ -66,10 +44,10 @@ const fetchUserInfo = () => {
 // 获取班级列表
 const fetchClasses = async () => {
   try {
-    const res = await request.get('/students/classes')
+    const res = await request.get('/classes')
     classList.value = res.data
   } catch (e) {
-    console.error(e)
+    // 静默处理
   }
 }
 
@@ -85,7 +63,7 @@ const fetchStudents = async () => {
     })
     students.value = res.data
   } catch (e) {
-    console.error(e)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -152,7 +130,7 @@ const handleSave = async () => {
       }
     }
   } catch (e) {
-    console.error(e)
+    // 静默处理
   }
 }
 
@@ -170,22 +148,82 @@ const handleDelete = (id) => {
         ElMessage.success('删除成功')
       }
     } catch (e) {
-      console.error(e)
+      // 静默处理
     }
   })
 }
 
-// 去个人中心
-const goToProfile = () => {
-  router.push('/profile')
+// 班级管理相关方法
+const openClassManage = () => {
+  classManageVisible.value = true
 }
 
-// 登出
-const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('userInfo')
-  router.push('/login')
-  ElMessage.info('已退出登录')
+const openAddClass = () => {
+  isClassEdit.value = false
+  classForm.id = null
+  classForm.name = ''
+}
+
+const openEditClass = (cls) => {
+  isClassEdit.value = true
+  classForm.id = cls.id
+  classForm.name = cls.name
+}
+
+const getStudentCount = (className) => {
+  return students.value.filter(s => s.className === className).length
+}
+
+const handleSaveClass = async () => {
+  if (!classForm.name.trim()) {
+    ElMessage.warning('班级名称不能为空')
+    return
+  }
+  try {
+    if (isClassEdit.value) {
+      const res = await request.put(`/classes/${classForm.id}`, { name: classForm.name })
+      if (res.data.success) {
+        ElMessage.success('修改成功')
+        fetchClasses()
+        fetchStudents()
+      } else {
+        ElMessage.error(res.data.message)
+      }
+    } else {
+      const res = await request.post('/classes', { name: classForm.name })
+      if (res.data.success) {
+        ElMessage.success('添加成功')
+        fetchClasses()
+      } else {
+        ElMessage.error(res.data.message)
+      }
+    }
+    classForm.id = null
+    classForm.name = ''
+    isClassEdit.value = false
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '操作失败')
+  }
+}
+
+const handleDeleteClass = (cls) => {
+  ElMessageBox.confirm(`确定要删除班级"${cls.name}"吗?`, '提示', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const res = await request.delete(`/classes/${cls.id}`)
+      if (res.data.success) {
+        ElMessage.success('删除成功')
+        fetchClasses()
+      } else {
+        ElMessage.error(res.data.message)
+      }
+    } catch (e) {
+      ElMessage.error(e.response?.data?.message || '删除失败')
+    }
+  })
 }
 
 onMounted(() => {
@@ -196,92 +234,72 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-container class="layout">
-    <el-header class="header">
-      <div class="logo">
-        <el-icon style="margin-right: 8px; vertical-align: middle;"><Management /></el-icon>
-        <span>学生管理系统</span>
-      </div>
-      <div class="nav-menu">
-        <el-menu mode="horizontal" :default-active="activeMenu" @select="handleMenuSelect">
-          <el-menu-item index="student">
-            <el-icon><User /></el-icon>
-            <span>学生管理</span>
-          </el-menu-item>
-          <el-menu-item index="courses">
-            <el-icon><Reading /></el-icon>
-            <span>课程中心</span>
-          </el-menu-item>
-          <el-menu-item index="my-courses">
-            <el-icon><Collection /></el-icon>
-            <span>我的课程</span>
-          </el-menu-item>
-          <el-menu-item index="calendar">
-            <el-icon><Calendar /></el-icon>
-            <span>课程日历</span>
-          </el-menu-item>
-          <el-menu-item v-if="isAdmin" index="course-manage">
-            <el-icon><Setting /></el-icon>
-            <span>课程管理</span>
-          </el-menu-item>
-        </el-menu>
-      </div>
-      <div class="header-right">
-        <el-tag :type="isAdmin ? 'danger' : 'info'" style="margin-right: 10px;">
-          {{ isAdmin ? '管理员' : '普通用户' }}
-        </el-tag>
-        <el-button type="primary" plain size="small" @click="goToProfile" style="margin-right: 10px;">
-          个人中心
+  <AppLayout>
+    <div class="student-container">
+      <!-- 操作区 -->
+      <div class="filter-card">
+        <el-select
+          v-model="selectedClass"
+          placeholder="选择班级"
+          clearable
+          class="filter-select"
+        >
+          <el-option label="全部班级" value="" />
+          <el-option
+            v-for="cls in classList"
+            :key="cls.id"
+            :label="cls.name"
+            :value="cls.name"
+          />
+        </el-select>
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索姓名或学号..."
+          clearable
+          prefix-icon="Search"
+          class="filter-input"
+        />
+        <el-button
+          v-if="isAdmin"
+          type="info"
+          icon="Setting"
+          class="ios-pressable"
+          @click="openClassManage"
+        >
+          班级管理
         </el-button>
-        <el-button type="danger" plain size="small" @click="logout">退出登录</el-button>
+        <el-button
+          v-if="isAdmin"
+          type="primary"
+          icon="Plus"
+          class="add-btn ios-pressable"
+          @click="openAddDialog"
+        >
+          添加学生
+        </el-button>
       </div>
-    </el-header>
 
-    <el-main class="main-content">
-      <el-card class="box-card" shadow="hover">
-        <div class="operation-area">
-          <el-row :gutter="20">
-            <el-col :span="6">
-              <el-select
-                v-model="selectedClass"
-                placeholder="选择班级"
-                clearable
-                style="width: 100%;"
+      <!-- 表格卡片 -->
+      <div class="table-card">
+        <el-table
+          :data="students"
+          v-loading="loading"
+          stripe
+          class="ios-table"
+        >
+          <el-table-column label="头像" width="70">
+            <template #default="scope">
+              <el-avatar
+                :size="40"
+                :src="scope.row.avatarUrl"
+                class="student-avatar"
               >
-                <el-option label="全部班级" value="" />
-                <el-option
-                  v-for="className in classList"
-                  :key="className"
-                  :label="className"
-                  :value="className"
-                />
-              </el-select>
-            </el-col>
-            <el-col :span="6">
-              <el-input
-                v-model="searchKeyword"
-                placeholder="输入姓名或学号搜索..."
-                clearable
-                prefix-icon="Search"
-              />
-            </el-col>
-            <el-col :span="12" style="text-align: right;">
-              <el-button
-                v-if="isAdmin"
-                type="primary"
-                icon="Plus"
-                @click="openAddDialog"
-              >
-                添加学生
-              </el-button>
-            </el-col>
-          </el-row>
-        </div>
-
-        <el-table :data="students" v-loading="loading" style="width: 100%" stripe table-layout="auto">
-          <el-table-column prop="id" label="ID" sortable />
-          <el-table-column prop="studentNumber" label="学号" sortable />
-          <el-table-column prop="name" label="姓名">
+                {{ scope.row.name?.charAt(0) || '?' }}
+              </el-avatar>
+            </template>
+          </el-table-column>
+          <el-table-column prop="studentNumber" label="学号" width="120" />
+          <el-table-column prop="name" label="姓名" width="120">
             <template #default="scope">
               <span :class="{
                 'name-super-admin': scope.row.username === 'admin',
@@ -291,34 +309,37 @@ onMounted(() => {
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="gender" label="性别">
+          <el-table-column prop="gender" label="性别" width="80">
             <template #default="scope">
-              <el-tag :type="scope.row.gender === '男' ? '' : 'danger'" effect="plain">
+              <span class="gender-tag" :class="scope.row.gender === '男' ? 'male' : 'female'">
                 {{ scope.row.gender }}
-              </el-tag>
+              </span>
             </template>
           </el-table-column>
-          <el-table-column prop="age" label="年龄" sortable />
-          <el-table-column prop="className" label="班级" />
-
-          <el-table-column v-if="isAdmin" label="操作">
+          <el-table-column prop="age" label="年龄" width="80" />
+          <el-table-column prop="className" label="班级" min-width="120" />
+          <el-table-column v-if="isAdmin" label="操作" width="100" fixed="right">
             <template #default="scope">
-              <el-button size="small" type="primary" link @click="openEditDialog(scope.row)">
-                编辑
-              </el-button>
-              <el-button
-                v-if="scope.row.username !== 'admin' && scope.row.username!==userInfo.username"
-                size="small"
-                type="danger"
-                link
-                @click="handleDelete(scope.row.id)"
-              >
-                删除
-              </el-button>
+              <div class="action-btns">
+                <el-button
+                  :icon="Edit"
+                  circle
+                  size="small"
+                  @click="openEditDialog(scope.row)"
+                />
+                <el-button
+                  v-if="scope.row.username !== 'admin' && scope.row.username !== userInfo.username"
+                  :icon="Delete"
+                  circle
+                  size="small"
+                  type="danger"
+                  @click="handleDelete(scope.row.id)"
+                />
+              </div>
             </template>
           </el-table-column>
         </el-table>
-      </el-card>
+      </div>
 
       <!-- 弹窗 -->
       <el-dialog
@@ -350,7 +371,14 @@ onMounted(() => {
             <el-input-number v-model="form.age" :min="1" :max="100" />
           </el-form-item>
           <el-form-item label="班级">
-            <el-input v-model="form.className" placeholder="请输入班级名称" />
+            <el-select v-model="form.className" placeholder="请选择班级" style="width: 100%">
+              <el-option
+                v-for="cls in classList"
+                :key="cls.id"
+                :label="cls.name"
+                :value="cls.name"
+              />
+            </el-select>
           </el-form-item>
           <el-form-item v-if="isEdit" label="邮箱">
             <el-input v-model="form.email" placeholder="请输入邮箱" />
@@ -382,79 +410,139 @@ onMounted(() => {
           </span>
         </template>
       </el-dialog>
-    </el-main>
-  </el-container>
+
+      <!-- 班级管理弹窗 -->
+      <el-dialog
+        v-model="classManageVisible"
+        title="班级管理"
+        width="500px"
+        align-center
+      >
+        <div class="class-form">
+          <el-input
+            v-model="classForm.name"
+            :placeholder="isClassEdit ? '修改班级名称' : '输入新班级名称'"
+            style="flex: 1"
+          />
+          <el-button type="primary" @click="handleSaveClass">
+            {{ isClassEdit ? '保存' : '添加' }}
+          </el-button>
+          <el-button v-if="isClassEdit" @click="openAddClass">取消</el-button>
+        </div>
+        <el-table :data="classList" style="margin-top: 16px">
+          <el-table-column prop="name" label="班级名称" />
+          <el-table-column label="学生数" width="80">
+            <template #default="scope">
+              {{ getStudentCount(scope.row.name) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="scope">
+              <el-button
+                size="small"
+                :disabled="getStudentCount(scope.row.name) > 0"
+                @click="openEditClass(scope.row)"
+              >编辑</el-button>
+              <el-button
+                size="small"
+                type="danger"
+                :disabled="getStudentCount(scope.row.name) > 0"
+                @click="handleDeleteClass(scope.row)"
+              >删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-if="classList.length === 0" class="empty-tip">
+          暂无班级，请先添加
+        </div>
+      </el-dialog>
+    </div>
+  </AppLayout>
 </template>
 
 <style scoped>
-.layout {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.header {
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  height: 60px;
-}
-
-.logo {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.nav-menu {
-  flex: 1;
-  margin: 0 20px;
-}
-
-.nav-menu .el-menu {
-  border-bottom: none;
-  background: transparent;
-}
-
-.nav-menu .el-menu-item {
-  height: 60px;
-  line-height: 60px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.main-content {
-  background-color: #f5f7fa;
-  padding: 20px;
-}
-
-.box-card {
+.student-container {
+  max-width: 1200px;
   margin: 0 auto;
-  border-radius: 8px;
 }
 
-.operation-area {
+.filter-card {
+  display: flex;
+  gap: 12px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  width: 160px;
+}
+
+.filter-input {
+  width: 240px;
+}
+
+.add-btn {
+  margin-left: auto;
+}
+
+.table-card {
+  background: var(--ios-card-solid);
+  border-radius: var(--ios-radius-lg);
+  box-shadow: var(--ios-shadow);
+  overflow: hidden;
+}
+
+.ios-table {
+  --el-table-border-color: var(--ios-separator);
+  --el-table-row-hover-bg-color: var(--ios-blue-light);
+}
+
+.gender-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.gender-tag.male {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--ios-blue);
+}
+
+.gender-tag.female {
+  background: rgba(255, 45, 85, 0.1);
+  color: #ff2d55;
+}
+
+.action-btns {
+  display: flex;
+  gap: 8px;
 }
 
 .name-super-admin {
-  color: #e6a23c !important;
+  color: var(--ios-orange) !important;
   font-weight: 600 !important;
 }
 
 .name-admin {
-  color: #67c23a !important;
+  color: var(--ios-green) !important;
   font-weight: 600 !important;
 }
 
+.class-form {
+  display: flex;
+  gap: 12px;
+}
+
+.empty-tip {
+  text-align: center;
+  color: var(--ios-text-secondary);
+  padding: 20px;
+}
+
+.student-avatar {
+  background: linear-gradient(135deg, var(--ios-blue), var(--ios-purple));
+  color: white;
+  font-weight: 600;
+}
 </style>

@@ -19,4 +19,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     // WHERE class_name = ?1 AND (name LIKE %?2% OR student_number LIKE %?3%)
     List<Student> findByClassNameAndNameContainingOrClassNameAndStudentNumberContaining(
         String className1, String name, String className2, String studentNumber);
+
+    // 统计班级学生数量
+    long countByClassName(String className);
 }
