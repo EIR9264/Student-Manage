@@ -73,8 +73,8 @@
                 @keyup.enter="searchAttachmentContent"
               >
                 <template #append>
-                  <el-button @click="searchAttachmentContent">
-                    <el-icon><Search /></el-icon>
+                  <el-button :loading="searchLoading" @click="searchAttachmentContent">
+                    <el-icon v-if="!searchLoading"><Search /></el-icon>
                   </el-button>
                 </template>
               </el-input>
@@ -160,6 +160,25 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 搜索结果对话框 -->
+    <el-dialog v-model="searchDialogVisible" title="搜索结果" width="70%">
+      <div v-if="searchResults.length > 0" class="search-results">
+        <div v-for="result in searchResults" :key="result.attachmentId" class="search-result-item">
+          <div class="result-header">
+            <el-icon :size="18"><component :is="getFileIcon(result.fileType)" /></el-icon>
+            <span class="result-filename">{{ result.fileName }}</span>
+            <el-tag size="small">{{ result.fileType }}</el-tag>
+          </div>
+          <div v-if="result.highlight" class="result-highlight" v-html="result.highlight"></div>
+          <div class="result-actions">
+            <el-button type="primary" link @click="previewSearchResult(result)">预览</el-button>
+            <el-button type="success" link @click="downloadSearchResult(result)">下载</el-button>
+          </div>
+        </div>
+      </div>
+      <el-empty v-else description="未找到匹配的内容" />
+    </el-dialog>
     </div>
   </AppLayout>
 </template>
@@ -176,7 +195,8 @@ import {
   getAttachmentDownloadUrl,
   enrollCourse,
   dropCourse,
-  getMyEnrollments
+  getMyEnrollments,
+  searchAttachments
 } from '@/api/course'
 import AppLayout from '@/components/AppLayout.vue'
 
@@ -186,6 +206,9 @@ const router = useRouter()
 const course = ref({})
 const attachments = ref([])
 const attachmentSearch = ref('')
+const searchLoading = ref(false)
+const searchResults = ref([])
+const searchDialogVisible = ref(false)
 const previewVisible = ref(false)
 const previewUrl = ref('')
 const previewTitle = ref('')
@@ -353,9 +376,56 @@ const downloadCurrent = () => {
   }
 }
 
-const searchAttachmentContent = () => {
-  if (attachmentSearch.value) {
-    router.push(`/courses?search=${attachmentSearch.value}`)
+const searchAttachmentContent = async () => {
+  if (!attachmentSearch.value.trim()) {
+    ElMessage.warning('请输入搜索关键词')
+    return
+  }
+
+  searchLoading.value = true
+  try {
+    const res = await searchAttachments({
+      keyword: attachmentSearch.value,
+      courseId: route.params.id,
+      page: 0,
+      size: 20
+    })
+    if (res.data.success) {
+      searchResults.value = res.data.data.content || []
+      searchDialogVisible.value = true
+      if (searchResults.value.length === 0) {
+        ElMessage.info('未找到匹配的内容')
+      }
+    }
+  } catch (error) {
+    ElMessage.error('搜索失败，请稍后重试')
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+const previewSearchResult = async (result) => {
+  try {
+    currentAttachment.value = { id: result.attachmentId, fileType: result.fileType }
+    previewTitle.value = result.fileName
+    const res = await getAttachmentPreviewUrl(result.attachmentId)
+    if (res.data.success) {
+      previewUrl.value = res.data.data
+      previewVisible.value = true
+    }
+  } catch (error) {
+    ElMessage.error('获取预览链接失败')
+  }
+}
+
+const downloadSearchResult = async (result) => {
+  try {
+    const res = await getAttachmentDownloadUrl(result.attachmentId)
+    if (res.data.success) {
+      window.open(res.data.data, '_blank')
+    }
+  } catch (error) {
+    ElMessage.error('获取下载链接失败')
   }
 }
 
@@ -412,5 +482,52 @@ onMounted(() => {
 
 .no-preview p {
   margin: 20px 0;
+}
+
+.search-results {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  padding: 15px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.search-result-item:hover {
+  background-color: #f5f7fa;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.result-filename {
+  font-weight: 500;
+  flex: 1;
+}
+
+.result-highlight {
+  padding: 10px;
+  background-color: #fafafa;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 10px;
+}
+
+.result-highlight :deep(em) {
+  color: #409eff;
+  font-style: normal;
+  font-weight: bold;
+}
+
+.result-actions {
+  text-align: right;
 }
 </style>

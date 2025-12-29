@@ -19,13 +19,13 @@ public class CourseAttachmentDocument {
     @Field(type = FieldType.Long)
     private Long courseId;
 
-    @Field(type = FieldType.Text, analyzer = "standard")
+    @Field(type = FieldType.Text)
     private String courseName;
 
-    @Field(type = FieldType.Text, analyzer = "standard")
+    @Field(type = FieldType.Text)
     private String fileName;
 
-    @Field(type = FieldType.Text, analyzer = "standard")
+    @Field(type = FieldType.Text)
     private String content;
 
     @Field(type = FieldType.Keyword)

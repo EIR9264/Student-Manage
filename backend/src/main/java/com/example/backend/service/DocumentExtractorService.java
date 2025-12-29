@@ -44,7 +44,6 @@ public class DocumentExtractorService {
 
             return content;
         } catch (Exception e) {
-            // 提取失败返回空字符串，不影响主流程
             return "";
         }
     }
@@ -112,7 +111,7 @@ public class DocumentExtractorService {
      */
     public String extractPptText(InputStream inputStream) {
         try (HSLFSlideShow ppt = new HSLFSlideShow(inputStream);
-             SlideShowExtractor<?, ?> extractor = new SlideShowExtractor<>(ppt)) {
+                SlideShowExtractor<?, ?> extractor = new SlideShowExtractor<>(ppt)) {
             return extractor.getText();
         } catch (Exception e) {
             return "";

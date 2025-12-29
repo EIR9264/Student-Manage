@@ -138,4 +138,19 @@ public class CourseAttachmentController {
 
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * 重新索引所有附件到ES（管理员）
+     */
+    @PostMapping("/attachments/reindex")
+    public ResponseEntity<?> reindexAttachments(@RequestParam(defaultValue = "false") boolean force) {
+        int count = force ? elasticsearchService.forceReindexAll() : elasticsearchService.reindexAllAttachments();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "成功索引 " + count + " 个附件");
+        response.put("count", count);
+
+        return ResponseEntity.ok(response);
+    }
 }

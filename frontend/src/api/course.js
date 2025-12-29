@@ -86,3 +86,8 @@ export function getCalendarEvents(startDate, endDate) {
     params: { startDate, endDate }
   })
 }
+
+// 重新索引附件到ES
+export function reindexAttachments(force = false) {
+  return request.post('/attachments/reindex', null, { params: { force } })
+}

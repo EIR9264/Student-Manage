@@ -1,17 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/LoginView.vue'
-import StudentView from '../views/StudentView.vue'
-import RegisterView from '../views/RegisterView.vue'
-import ProfileView from '../views/ProfileView.vue'
-import HomeView from '../views/HomeView.vue'
 
 const routes = [
-  { path: '/', component: HomeView },
-  { path: '/home', component: HomeView },
-  { path: '/login', component: Login },
-  { path: '/register', component: RegisterView },
-  { path: '/student', component: StudentView },
-  { path: '/profile', component: ProfileView },
+  { path: '/', component: () => import('../views/HomeView.vue') },
+  { path: '/home', component: () => import('../views/HomeView.vue') },
+  { path: '/login', component: () => import('../views/LoginView.vue') },
+  { path: '/register', component: () => import('../views/RegisterView.vue') },
+  { path: '/student', component: () => import('../views/StudentView.vue') },
+  { path: '/profile', component: () => import('../views/ProfileView.vue') },
   // 课程相关路由
   { path: '/courses', component: () => import('../views/CourseListView.vue') },
   { path: '/courses/:id', component: () => import('../views/CourseDetailView.vue') },

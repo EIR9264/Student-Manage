@@ -29,4 +29,12 @@ public interface CourseAttachmentRepository extends JpaRepository<CourseAttachme
 
     // 统计课程附件数量
     long countByCourseId(Long courseId);
+
+    // 按文件名搜索
+    @Query("SELECT a FROM CourseAttachment a WHERE a.fileName LIKE %:keyword%")
+    List<CourseAttachment> searchByFileName(@Param("keyword") String keyword);
+
+    // 按课程ID和文件名搜索
+    @Query("SELECT a FROM CourseAttachment a WHERE a.courseId = :courseId AND a.fileName LIKE %:keyword%")
+    List<CourseAttachment> searchByCourseIdAndFileName(@Param("courseId") Long courseId, @Param("keyword") String keyword);
 }
